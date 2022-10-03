@@ -1,22 +1,19 @@
-import React from 'react';
-import { useNavigation } from '@react-navigation/native';
-import { Alert, KeyboardAvoidingView, Platform } from 'react-native';
-import { useForm } from 'react-hook-form';
-import { RFValue } from 'react-native-responsive-fontsize';
-import * as Yup from 'yup';
-import { yupResolver } from '@hookform/resolvers/yup';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import uuid from 'react-native-uuid';
+import React from "react";
+import { useNavigation } from "@react-navigation/native";
+import { Alert, KeyboardAvoidingView, Platform } from "react-native";
+import { useForm } from "react-hook-form";
+import { RFValue } from "react-native-responsive-fontsize";
+import * as Yup from "yup";
+import { yupResolver } from "@hookform/resolvers/yup";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import uuid from "react-native-uuid";
 
-import { Header } from '../../components/Header';
-import { Input } from '../../components/Form/Input';
-import { Button } from '../../components/Form/Button';
+import { Header } from "../../components/Header";
+import { Input } from "../../components/Form/Input";
+import { Button } from "../../components/Form/Button";
 
-import {
-  Container,
-  Form
-} from './styles';
-import { StackNavigationProp } from '@react-navigation/stack';
+import { Container, Form } from "./styles";
+import { StackNavigationProp } from "@react-navigation/stack";
 
 interface FormData {
   service_name: string;
@@ -25,96 +22,103 @@ interface FormData {
 }
 
 const schema = Yup.object().shape({
-  service_name: Yup.string().required('Nome do serviço é obrigatório!'),
-  email: Yup.string().email('Não é um email válido').required('Email é obrigatório!'),
-  password: Yup.string().required('Senha é obrigatória!'),
-})
+  service_name: Yup.string().required("Nome do serviço é obrigatório!"),
+  email: Yup.string()
+    .email("Não é um email válido")
+    .required("Email é obrigatório!"),
+  password: Yup.string().required("Senha é obrigatória!"),
+});
 
 type RootStackParamList = {
   Home: undefined;
   RegisterLoginData: undefined;
 };
 
-type NavigationProps = StackNavigationProp<RootStackParamList, 'RegisterLoginData'>;
+type NavigationProps = StackNavigationProp<
+  RootStackParamList,
+  "RegisterLoginData"
+>;
 
 export function RegisterLoginData() {
-  const { navigate } = useNavigation<NavigationProps>()
+  const { navigate } = useNavigation<NavigationProps>();
   const {
     control,
     handleSubmit,
-    formState: {
-      errors
-    }
+    formState: { errors },
+    reset,
   } = useForm({
-    resolver: yupResolver(schema)
+    resolver: yupResolver(schema),
   });
 
   async function handleRegister(formData: FormData) {
     const newLoginData = {
       id: String(uuid.v4()),
-      ...formData
+      ...formData,
+    };
+    try {
+      const dataKey = "@savepass:logins";
+      const data = await AsyncStorage.getItem(dataKey);
+      const currentData = data ? JSON.parse(data) : [];
+
+      const newData = [...currentData, newLoginData];
+
+      await AsyncStorage.setItem(dataKey, JSON.stringify(newData));
+      reset();
+      navigate("Home");
+    } catch (error) {
+      console.log(error);
+      Alert.alert("Não foi possível salvar");
     }
-
-    const dataKey = '@savepass:logins';
-
-    // Save data on AsyncStorage and navigate to 'Home' screen
   }
 
   return (
     <KeyboardAvoidingView
       style={{ flex: 1 }}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
       enabled
     >
       <Header />
       <Container>
         <Form>
           <Input
-            testID="service-name-input"
-            title="Nome do serviço"
-            name="service_name"
+            testID='service-name-input'
+            title='Nome do serviço'
+            name='service_name'
             error={
-              // Replace here with real content
-              'Has error ? show error message'
+              errors?.service_name && errors?.service_name?.message?.toString()
             }
             control={control}
-            autoCapitalize="sentences"
+            autoCapitalize='sentences'
             autoCorrect
           />
           <Input
-            testID="email-input"
-            title="E-mail ou usuário"
-            name="email"
-            error={
-              // Replace here with real content
-              'Has error ? show error message'
-            }
+            testID='email-input'
+            title='E-mail ou usuário'
+            name='email'
+            error={errors?.email && errors?.email?.message?.toString()}
             control={control}
             autoCorrect={false}
-            autoCapitalize="none"
-            keyboardType="email-address"
+            autoCapitalize='none'
+            keyboardType='email-address'
           />
           <Input
-            testID="password-input"
-            title="Senha"
-            name="password"
-            error={
-              // Replace here with real content
-              'Has error ? show error message'
-            }
+            testID='password-input'
+            title='Senha'
+            name='password'
+            error={errors?.password && errors?.password?.message?.toString()}
             control={control}
             secureTextEntry
           />
 
           <Button
             style={{
-              marginTop: RFValue(8)
+              marginTop: RFValue(8),
             }}
-            title="Salvar"
+            title='Salvar'
             onPress={handleSubmit(handleRegister)}
           />
         </Form>
       </Container>
     </KeyboardAvoidingView>
-  )
+  );
 }
